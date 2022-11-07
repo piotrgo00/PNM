@@ -33,8 +33,7 @@ namespace PNM
             string fileName = file_input.Text;
             int width, height;
             byte[] byteImage = GetCharTable(fileName, out width, out height);
-            
-            //BitmapImage image = LoadImage(data);
+
             BitmapSource bitmapSource = BitmapSource.Create(width, height, 10, 10, PixelFormats.Indexed8, BitmapPalettes.Gray256, byteImage, width);
             Image.Source = bitmapSource;
         }
@@ -46,6 +45,7 @@ namespace PNM
             height = 0;
             int widthMark = 0;
             int heightMark = 0;
+            int maxValue = 0;
             string fileType = "";
             string input = File.ReadAllText(fileName).Replace("\r", "");
             string[] StringArray = input.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
@@ -76,8 +76,11 @@ namespace PNM
                     {
                         width = Int32.Parse(BrokenUp[0]);
                         height = Int32.Parse(BrokenUp[1]);
-                        iBreak = i;
-                        break;
+                        if (fileType == "P1")
+                        {
+                            iBreak = i;
+                            break;
+                        }
                     }
                     else if (BrokenUp.Length == 1 && width == 0)
                     {
@@ -86,24 +89,41 @@ namespace PNM
                     else if (BrokenUp.Length == 1 && width != 0)
                     {
                         height = Int32.Parse(BrokenUp[0]);
-                        iBreak = i;
-                        break;
+                        if(fileType == "P1")
+                        {
+                            iBreak = i;
+                            break;
+                        }
                     }
                     else
                     {
                         throw new NotImplementedException();
                     }
                 }
+                else if (width != 0 || height != 0)
+                {
+                    string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                    if (BrokenUp.Length == 1 || (BrokenUp.Length >= 2 && BrokenUp[1].StartsWith('#')))
+                    {
+                        maxValue = Int32.Parse(BrokenUp[0]);
+                        iBreak = i;
+                        break;
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                }
             }
 
-            if(fileType == "" || width == 0 || height == 0)
+            if (fileType == "" || width == 0 || height == 0)
                 throw new NotImplementedException();
 
             int[,] table = new int[width, height];
 
-            for (int i = iBreak + 1; i < StringArray.Length; i++)
+            if (fileType == "P1")
             {
-                if (fileType == "P1")
+                for (int i = iBreak + 1; i < StringArray.Length; i++)
                 {
                     foreach (char c in StringArray[i])
                     {
@@ -111,7 +131,28 @@ namespace PNM
                             break;
                         if (c == '1' || c == '0')
                             table[widthMark++, heightMark] = c - 48;
-                        if(widthMark == width)
+                        if (widthMark == width)
+                        {
+                            widthMark = 0;
+                            heightMark++;
+                        }
+                        if (heightMark == height)
+                            break;
+                    }
+                }
+            }
+
+            if (fileType == "P2")
+            {
+                for (int i = iBreak + 1; i < StringArray.Length; i++)
+                {
+                    string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string s in BrokenUp)
+                    {
+                        if (s.StartsWith('#'))
+                            break;
+                        table[widthMark++, heightMark] = Int32.Parse(s);
+                        if (widthMark == width)
                         {
                             widthMark = 0;
                             heightMark++;
@@ -140,30 +181,18 @@ namespace PNM
                 }
             }
 
-            if (fileType == "P1")
+            if (fileType == "P2")
             {
-
+                for (int i = 0; i < table.GetLength(1); i++)
+                {
+                    for (int j = 0; j < table.GetLength(0); j++)
+                    {
+                        data[i * table.GetLength(0) + j] = (byte)(table[j, i] * 255 / maxValue);
+                    }
+                }
             }
 
             return data;
-        }
-
-        private static BitmapImage LoadImage(byte[] imageData)
-        {
-            if (imageData == null || imageData.Length == 0) return null;
-            var image = new BitmapImage();
-            using (var mem = new MemoryStream(imageData))
-            {
-                mem.Position = 0;
-                image.BeginInit();
-                image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.UriSource = null;
-                image.StreamSource = mem;
-                image.EndInit();
-            }
-            image.Freeze();
-            return image;
         }
     }
 }
