@@ -31,15 +31,19 @@ namespace PNM
         private void Set_file_path_Click(object sender, RoutedEventArgs e)
         {
             string fileName = file_input.Text;
-            char[,] tab = GetCharTable(fileName);
-
+            int width, height;
+            byte[] byteImage = GetCharTable(fileName, out width, out height);
+            
+            //BitmapImage image = LoadImage(data);
+            BitmapSource bitmapSource = BitmapSource.Create(width, height, 10, 10, PixelFormats.Indexed8, BitmapPalettes.Gray256, byteImage, width);
+            Image.Source = bitmapSource;
         }
 
-        private char[,] GetCharTable(string fileName)
+        private byte[] GetCharTable(string fileName, out int width, out int height)
         {
             int iBreak = 0;
-            int width = 0;
-            int height = 0;
+            width = 0;
+            height = 0;
             int widthMark = 0;
             int heightMark = 0;
             string fileType = "";
@@ -95,7 +99,7 @@ namespace PNM
             if(fileType == "" || width == 0 || height == 0)
                 throw new NotImplementedException();
 
-            char[,] table = new char[width, height];
+            int[,] table = new int[width, height];
 
             for (int i = iBreak + 1; i < StringArray.Length; i++)
             {
@@ -106,7 +110,7 @@ namespace PNM
                         if (c == '#')
                             break;
                         if (c == '1' || c == '0')
-                            table[widthMark++, heightMark] = c;
+                            table[widthMark++, heightMark] = c - 48;
                         if(widthMark == width)
                         {
                             widthMark = 0;
@@ -117,7 +121,49 @@ namespace PNM
                     }
                 }
             }
-            return table;
+
+            byte[] data = new byte[table.GetLength(0) * table.GetLength(1)];
+
+            if (fileType == "P1")
+            {
+                for (int i = 0; i < table.GetLength(1); i++)
+                {
+                    for (int j = 0; j < table.GetLength(0); j++)
+                    {
+                        if (table[j, i] == 1)
+                            data[i * table.GetLength(0) + j] = 0;
+                        else if (table[j, i] == 0)
+                            data[i * table.GetLength(0) + j] = 255;
+                        else
+                            throw new Exception();
+                    }
+                }
+            }
+
+            if (fileType == "P1")
+            {
+
+            }
+
+            return data;
+        }
+
+        private static BitmapImage LoadImage(byte[] imageData)
+        {
+            if (imageData == null || imageData.Length == 0) return null;
+            var image = new BitmapImage();
+            using (var mem = new MemoryStream(imageData))
+            {
+                mem.Position = 0;
+                image.BeginInit();
+                image.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.UriSource = null;
+                image.StreamSource = mem;
+                image.EndInit();
+            }
+            image.Freeze();
+            return image;
         }
     }
 }
