@@ -23,6 +23,9 @@ namespace PNM
     /// </summary>
     public partial class MainWindow : Window
     {
+        byte[]? byteImageG;
+        int width;
+        int height;
         public MainWindow()
         {
             InitializeComponent();
@@ -31,11 +34,13 @@ namespace PNM
         private void Set_file_path_Click(object sender, RoutedEventArgs e)
         {
             string fileName = file_input.Text;
-            int width, height;
+            //int width, height;
             byte[] byteImage = GetCharTable(fileName, out width, out height);
 
             BitmapSource bitmapSource = BitmapSource.Create(width, height, 10, 10, PixelFormats.Indexed8, BitmapPalettes.Gray256, byteImage, width);
             Image.Source = bitmapSource;
+
+            byteImageG = byteImage;
         }
 
         private byte[] GetCharTable(string fileName, out int width, out int height)
@@ -89,7 +94,7 @@ namespace PNM
                     else if (BrokenUp.Length == 1 && width != 0)
                     {
                         height = Int32.Parse(BrokenUp[0]);
-                        if(fileType == "P1")
+                        if (fileType == "P1")
                         {
                             iBreak = i;
                             break;
@@ -193,6 +198,68 @@ namespace PNM
             }
 
             return data;
+        }
+
+        private async void import_p1_Click(object sender, RoutedEventArgs e)
+        {
+            string fileName = file_input.Text;
+            if (byteImageG == null)
+                throw new Exception();
+
+            await WriteToFileP1(byteImageG, fileName, width, height);
+        }
+
+        private async void import_p2_Click(object sender, RoutedEventArgs e)
+        {
+            string fileName = file_input.Text;
+            if (byteImageG == null)
+                throw new Exception();
+
+            await WriteToFileP2(byteImageG, fileName, width, height);
+        }
+
+        public static async Task WriteToFileP1(byte[] bits, string filename, int width, int height)
+        {
+            List<string> text = new List<string>();
+            text.Add("P1");
+            text.Add(width.ToString() + " " + height.ToString());
+            string allBits = "";
+            int i = 0;
+            foreach (byte b in bits)
+            {
+                allBits += (Math.Round((double)b / (double)255, 0, MidpointRounding.AwayFromZero) + 1) % 2 + " ";
+                i++;
+                if (i == width)
+                {
+                    text.Add(allBits);
+                    i = 0;
+                    allBits = "";
+                }
+            }
+            text.Add(allBits);
+            await File.WriteAllLinesAsync(filename, text);
+        }
+
+        public static async Task WriteToFileP2(byte[] bits, string filename, int width, int height)
+        {
+            List<string> text = new List<string>();
+            text.Add("P2");
+            text.Add(width.ToString() + " " + height.ToString());
+            text.Add("255");
+            string allBits = "";
+            int i = 0;
+            foreach (byte b in bits)
+            {
+                allBits += b + " ";
+                i++;
+                if (i == width)
+                {
+                    text.Add(allBits);
+                    i = 0;
+                    allBits = "";
+                }
+            }
+            await File.WriteAllLinesAsync(filename, text);
         }
     }
 }

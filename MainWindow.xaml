@@ -10,6 +10,7 @@
         <Image RenderOptions.BitmapScalingMode="NearestNeighbor" RenderOptions.EdgeMode="Aliased" x:Name="Image"/>
         <Button x:Name="Set_file_path" Content="Draw" Canvas.Left="10" Canvas.Top="10" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Set_file_path_Click"/>
         <TextBox x:Name="file_input" Canvas.Left="46" TextWrapping="Wrap" Text="pbm-test-01.pbm" Canvas.Top="10" Width="526" HorizontalAlignment="Left" VerticalAlignment="Top" Height="20" Margin="36,0,0,0"/>
-
+        <Button x:Name="import_p1" Content="Import P1" HorizontalAlignment="Left" Margin="0,20,0,0" VerticalAlignment="Top" Click="import_p1_Click"/>
+        <Button x:Name="import_p2" Content="Import P2" HorizontalAlignment="Left" Margin="0,40,0,0" VerticalAlignment="Top" Click="import_p2_Click"/>
     </Grid>
 </Window>
