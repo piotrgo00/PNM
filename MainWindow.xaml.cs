@@ -54,6 +54,7 @@ namespace PNM
             string fileType = "";
             string input = File.ReadAllText(fileName).Replace("\r", "");
             string[] StringArray = input.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries);
+            string binaryData = string.Empty;
 
             for (int i = 0; i < StringArray.Length; i++)
             {
@@ -107,9 +108,15 @@ namespace PNM
                 }
                 else if (width != 0 || height != 0)
                 {
+                    if (fileType == "P4") 
+                    {
+                        iBreak = i - 1;
+                        break;
+                    }
+
                     string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
                     if (BrokenUp.Length == 1 || (BrokenUp.Length >= 2 && BrokenUp[1].StartsWith('#')))
-                    {
+                    {   
                         maxValue = Int32.Parse(BrokenUp[0]);
                         iBreak = i;
                         break;
@@ -168,6 +175,14 @@ namespace PNM
                 }
             }
 
+            if(fileType == "P4" || fileType == "P5")
+            {
+                for (int i = iBreak + 1; i < StringArray.Length; i++)
+                {
+                    binaryData += StringArray[i];
+                }
+            }
+
             byte[] data = new byte[table.GetLength(0) * table.GetLength(1)];
 
             if (fileType == "P1")
@@ -197,7 +212,67 @@ namespace PNM
                 }
             }
 
+            if (fileType == "P4")
+            {
+                string c = binaryData;
+                var binaryString = StringToBinary(c);
+
+                int counter = 0;
+                for (int i = 0; i < width; i++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        if (binaryString[counter] == '1')
+                            data[counter] = 0;
+                        else if (binaryString[counter] == '0')
+                            data[counter] = 255;
+                        else
+                            throw new Exception();
+
+                        counter++;
+                    }
+                }
+            }
+
+            if (fileType == "P5")
+            {
+                string c = binaryData;
+                var binaryString = StringToBinary(c);
+
+                List<string> strlist = SplitInParts(binaryString, 8).ToList();
+
+                int counter = 0;
+                for (int i = 0; i < width; i++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        var item = strlist[counter];
+                        var number = Convert.ToInt32(item, 2);
+                        data[counter] = (byte)(number * 255 / maxValue);
+
+                        counter++;
+                    }
+                }
+            }
+
             return data;
+        }
+
+        public string StringToBinary(string data)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (char c in data.ToCharArray())
+            {
+                sb.Append(Convert.ToString(c, 2).PadLeft(8, '0'));
+            }
+            return sb.ToString();
+        }
+
+        public IEnumerable<string> SplitInParts(string str, int chunkSize)
+        {
+            return Enumerable.Range(0, str.Length / chunkSize)
+                .Select(i => str.Substring(i * chunkSize, chunkSize));
         }
 
         private async void import_p1_Click(object sender, RoutedEventArgs e)
