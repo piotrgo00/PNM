@@ -26,6 +26,7 @@ namespace PNM
         byte[]? byteImageG;
         int width;
         int height;
+        Bitmap? p3Bitmap;
         public MainWindow()
         {
             InitializeComponent();
@@ -36,11 +37,17 @@ namespace PNM
             string fileName = file_input.Text;
             //int width, height;
             byte[] byteImage = GetCharTable(fileName, out width, out height);
+            if(p3Bitmap != null)
+            {
+                Image.Source = Bitmap2BitmapImage(p3Bitmap);
+            }
+            else
+            {
+                BitmapSource bitmapSource = BitmapSource.Create(width, height, 10, 10, PixelFormats.Indexed8, BitmapPalettes.Gray256, byteImage, width);
+                Image.Source = bitmapSource;
+                byteImageG = byteImage;
+            }
 
-            BitmapSource bitmapSource = BitmapSource.Create(width, height, 10, 10, PixelFormats.Indexed8, BitmapPalettes.Gray256, byteImage, width);
-            Image.Source = bitmapSource;
-
-            byteImageG = byteImage;
         }
 
         private byte[] GetCharTable(string fileName, out int width, out int height)
@@ -168,6 +175,53 @@ namespace PNM
                 }
             }
 
+            if (fileType == "P3")
+            {
+                int[,,] rgbImage = new int[width, height, 3];
+                int rgbValue = 0;
+                p3Bitmap = new Bitmap(width, height);
+                for (int i = iBreak + 1; i < StringArray.Length; i++)
+                {
+                    string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string s in BrokenUp)
+                    {
+                        if (s.StartsWith('#'))
+                            break;
+                        if (s.Contains('#'))
+                        {
+                            rgbImage[widthMark, heightMark, rgbValue++] = Int32.Parse(s.Split('#')[0]) * 255 / maxValue;
+                        }
+                        else
+                        {
+                            rgbImage[widthMark, heightMark, rgbValue++] = Int32.Parse(s) * 255 / maxValue;
+                        }
+                        if (rgbValue == 3)
+                        {
+                            rgbValue = 0;
+                            widthMark++;
+                        }
+                        if (widthMark == width)
+                        {
+                            widthMark = 0;
+                            heightMark++;
+                        }
+                        if (heightMark == height)
+                            break;
+                    }
+                }
+                for (int i = 0; i < width; i++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        p3Bitmap.SetPixel(i, j, System.Drawing.Color.FromArgb(rgbImage[i, j, 0], rgbImage[i, j, 1], rgbImage[i, j, 2]));
+                    }
+                }
+            }
+            else
+            {
+                p3Bitmap = null;
+            }
+
             byte[] data = new byte[table.GetLength(0) * table.GetLength(1)];
 
             if (fileType == "P1")
@@ -260,6 +314,23 @@ namespace PNM
                 }
             }
             await File.WriteAllLinesAsync(filename, text);
+        }
+
+        public static BitmapSource Bitmap2BitmapImage(System.Drawing.Bitmap bitmap)
+        {
+            var bitmapData = bitmap.LockBits(
+                new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                System.Drawing.Imaging.ImageLockMode.ReadOnly, bitmap.PixelFormat);
+
+            var bitmapSource = BitmapSource.Create(
+                bitmapData.Width, bitmapData.Height,
+                bitmap.HorizontalResolution, bitmap.VerticalResolution,
+                PixelFormats.Bgra32, null,
+                bitmapData.Scan0, bitmapData.Stride * bitmapData.Height, bitmapData.Stride);
+
+            bitmap.UnlockBits(bitmapData);
+
+            return bitmapSource;
         }
     }
 }
