@@ -52,6 +52,7 @@ namespace PNM
 
         private byte[] GetCharTable(string fileName, out int width, out int height)
         {
+            int skipAmount = 0;
             int iBreak = 0;
             width = 0;
             height = 0;
@@ -84,8 +85,16 @@ namespace PNM
                 }
                 else if (width == 0 || height == 0)
                 {
-                    string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
-                    if (BrokenUp.Length == 2 || (BrokenUp.Length != 0 && BrokenUp[2].StartsWith('#')))
+                    string[] BrokenUp;
+                    if (StringArray[i].Contains('#'))
+                    {
+                        BrokenUp = StringArray[i].Split('#')[0].Split(new string[] { " ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+                    }
+                    else
+                    {
+                        BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                    }
+                    if (BrokenUp.Length == 2)
                     {
                         width = Int32.Parse(BrokenUp[0]);
                         height = Int32.Parse(BrokenUp[1]);
@@ -108,6 +117,24 @@ namespace PNM
                             break;
                         }
                     }
+                    else if (BrokenUp.Length > 1)
+                    {
+                        if (width != 0)
+                        {
+                            height = Int32.Parse(BrokenUp[0]);
+                            skipAmount++;
+                            i--;
+                            if (fileType == "P1")
+                            {
+                                iBreak = i;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            width = Int32.Parse(BrokenUp[0]);
+                        }
+                    }
                     else
                     {
                         throw new NotImplementedException();
@@ -121,7 +148,21 @@ namespace PNM
                         break;
                     }
 
-                    string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                    string[] BrokenUp;
+                    if (StringArray[i].Contains('#'))
+                    {
+                        BrokenUp = StringArray[i].Split('#')[0].Split(new string[] { " ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+                    }
+                    else
+                    {
+                        BrokenUp = StringArray[i].Split(new string[] { " ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+                    }
+                    if (skipAmount > 0)
+                    {
+                        maxValue = Int32.Parse(BrokenUp[skipAmount++]);
+                        iBreak = i;
+                        break;
+                    }
                     if (BrokenUp.Length == 1 || (BrokenUp.Length >= 2 && BrokenUp[1].StartsWith('#')))
                     {   
                         maxValue = Int32.Parse(BrokenUp[0]);
@@ -184,14 +225,20 @@ namespace PNM
 
             if (fileType == "P3")
             {
+                int skipped = 0;
                 int[,,] rgbImage = new int[width, height, 3];
                 int rgbValue = 0;
                 p3Bitmap = new Bitmap(width, height);
                 for (int i = iBreak + 1; i < StringArray.Length; i++)
                 {
-                    string[] BrokenUp = StringArray[i].Split(new string[] { " " }, StringSplitOptions.RemoveEmptyEntries);
+                    string[] BrokenUp = StringArray[i].Split(new string[] { " ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
                     foreach (string s in BrokenUp)
                     {
+                        if(skipped != skipAmount)
+                        {
+                            skipped++;
+                            continue;
+                        }
                         if (s.StartsWith('#'))
                             break;
                         if (s.Contains('#'))
