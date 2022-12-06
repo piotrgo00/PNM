@@ -37,7 +37,7 @@ namespace PNM
             string fileName = file_input.Text;
             //int width, height;
             byte[] byteImage = GetCharTable(fileName, out width, out height);
-            if(p3Bitmap != null)
+            if (p3Bitmap != null)
             {
                 Image.Source = Bitmap2BitmapImage(p3Bitmap);
             }
@@ -142,7 +142,7 @@ namespace PNM
                 }
                 else if (width != 0 || height != 0)
                 {
-                    if (fileType == "P4") 
+                    if (fileType == "P4")
                     {
                         iBreak = i - 1;
                         break;
@@ -164,7 +164,7 @@ namespace PNM
                         break;
                     }
                     if (BrokenUp.Length == 1 || (BrokenUp.Length >= 2 && BrokenUp[1].StartsWith('#')))
-                    {   
+                    {
                         maxValue = Int32.Parse(BrokenUp[0]);
                         iBreak = i;
                         break;
@@ -234,7 +234,7 @@ namespace PNM
                     string[] BrokenUp = StringArray[i].Split(new string[] { " ", "\t" }, StringSplitOptions.RemoveEmptyEntries);
                     foreach (string s in BrokenUp)
                     {
-                        if(skipped != skipAmount)
+                        if (skipped != skipAmount)
                         {
                             skipped++;
                             continue;
@@ -276,7 +276,7 @@ namespace PNM
                 p3Bitmap = null;
             }
 
-            if(fileType == "P4" || fileType == "P5")
+            if (fileType == "P4" || fileType == "P5")
             {
                 for (int i = iBreak + 1; i < StringArray.Length; i++)
                 {
@@ -394,6 +394,20 @@ namespace PNM
             await WriteToFileP2(byteImageG, fileName, width, height);
         }
 
+        private async void import_p3_Click(object sender, RoutedEventArgs e)
+        {
+            string fileName = file_input.Text;
+            if (p3Bitmap == null)
+            {
+                if (byteImageG == null)
+                    throw new Exception();
+                else
+                    await WriteToFileP3FromByte(byteImageG, fileName, width, height);
+            }
+            else
+                await WriteToFileP3(p3Bitmap, fileName, width, height);
+        }
+
         public static async Task WriteToFileP1(byte[] bits, string filename, int width, int height)
         {
             List<string> text = new List<string>();
@@ -427,6 +441,49 @@ namespace PNM
             foreach (byte b in bits)
             {
                 allBits += b + " ";
+                i++;
+                if (i == width)
+                {
+                    text.Add(allBits);
+                    i = 0;
+                    allBits = "";
+                }
+            }
+            await File.WriteAllLinesAsync(filename, text);
+        }
+
+        public static async Task WriteToFileP3(Bitmap bitmap, string filename, int width, int height)
+        {
+            List<string> text = new List<string>
+            {
+                "P3",
+                width.ToString() + " " + height.ToString(),
+                "255"
+            };
+            string line;
+            for (int x = 0; x < height; x++)
+            {
+                line = "";
+                for (int y = 0; y < width; y++)
+                {
+                    line += bitmap.GetPixel(y, x).R + " " + bitmap.GetPixel(y, x).G + " " + bitmap.GetPixel(y, x).B + " ";
+                }
+                text.Add(line);
+            }
+            await File.WriteAllLinesAsync(filename, text);
+        }
+
+        public static async Task WriteToFileP3FromByte(byte[] bits, string filename, int width, int height)
+        {
+            List<string> text = new List<string>();
+            text.Add("P3");
+            text.Add(width.ToString() + " " + height.ToString());
+            text.Add("255");
+            string allBits = "";
+            int i = 0;
+            foreach (byte b in bits)
+            {
+                allBits += b + " " + b + " " + b + " ";
                 i++;
                 if (i == width)
                 {
